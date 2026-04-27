@@ -1,26 +1,35 @@
 import ProviderDetailClient from "./ProviderDetailClient";
+import type { Provider, Car, Booking, Review } from "@/types";
 
 const BACKEND = process.env.BACKEND_URL || "http://localhost:5000";
 
-async function fetchJSON(path: string) {
-  const res = await fetch(`${BACKEND}${path}`, { next: { revalidate: 60 } });
-  return res.ok ? res.json() : null;
-}
+export default async function ProviderDetailPage({ params }: { params: { id: string } }) {
+  let provider: Provider | null = null;
+  let cars: Car[] = [];
+  let bookings: Booking[] = [];
+  let reviews: Review[] = [];
 
-export default async function ProviderDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const [providerRes, carsRes] = await Promise.all([
-    fetchJSON(`/api/providers/${params.id}`),
-    fetchJSON(`/api/providers/${params.id}/cars`),
-  ]);
+  try {
+    const res = await fetch(`${BACKEND}/api/providers/${params.id}/detail`, {
+      next: { revalidate: 30, tags: [`provider-${params.id}`] },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        provider = data.data.provider;
+        cars = data.data.cars ?? [];
+        bookings = data.data.bookings ?? [];
+        reviews = data.data.reviews ?? [];
+      }
+    }
+  } catch {}
 
   return (
     <ProviderDetailClient
-      provider={providerRes?.data ?? null}
-      initialCars={carsRes?.data ?? []}
+      provider={provider}
+      initialCars={cars}
+      initialBookings={bookings}
+      initialReviews={reviews}
     />
   );
 }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Loading from "@/components/ui/Loading";
 import type { Rental, Car, Provider } from "@/types";
 import { calcDays, formatDate } from "@/libs/utils";
+import { revalidateProvider } from "@/app/actions/revalidate";
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -56,6 +57,7 @@ export default function PaymentPage({ params }: { params: { id: string } }) {
         setRental(rentalRes.data);
         if (qrRes.success) {
           setQrUrl(qrRes.data.url);
+          console.log("🔗 Mock Bank URL:", qrRes.data.url);
         }
       } catch {
         setError("Failed to load payment details.");
@@ -78,6 +80,11 @@ export default function PaymentPage({ params }: { params: { id: string } }) {
 
         if (res.success && res.data.paymentStatus === "paid") {
           if (pollRef.current) clearInterval(pollRef.current);
+          const providerId =
+            typeof rental?.provider === "object"
+              ? (rental.provider as Provider)._id
+              : rental?.provider;
+          if (providerId) await revalidateProvider(providerId);
           router.push(`/rentals/${id}/receipt`);
         }
       } catch {
